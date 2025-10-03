@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome App</title>
+    <!-- Tailwind CSSを読み込み -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 画面全体のスタイル */
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div id="app" class="text-center p-8 bg-white rounded-lg shadow-md">
+        <div id="loading-state">
+            <svg class="animate-spin h-8 w-8 text-blue-500 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p id="status-message" class="text-gray-600">お友だち登録ありがとうございます！<br>初回メッセージを準備しています...</p>
+        </div>
+        <div id="error-state" class="hidden">
+             <p class="text-red-500">エラーが発生しました。時間をおいて再度お試しください。</p>
+             <p id="error-message" class="text-xs text-gray-500 mt-2"></p>
+        </div>
+    </div>
+
+    <!-- LINE LIFF SDK -->
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script>
+        // --- 設定項目 ---
+        // 1. LINE Developersで発行したLIFF IDに書き換えてください
+        const LIFF_ID = '2008228530-9Xp8ebyA'; 
+        // 2. Google Apps Scriptをデプロイして取得したウェブアプリURLに書き換えてください
+        const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxYWmCaV2fICPCJTcBRD8sacr3cW4ANjPzPkUCUozpuV-pm_f_h2nz8S7sMX5p91chIxA/exec';
+
+        // メイン処理
+        async function main() {
+            try {
+                // ステータスメッセージを更新
+                updateStatusMessage('LIFFアプリを初期化しています...');
+                
+                // LIFFの初期化
+                await liff.init({ liffId: LIFF_ID });
+
+                if (!liff.isLoggedIn()) {
+                    // ログインしていない場合はログインを促す
+                    updateStatusMessage('LINEにログインしてください...');
+                    liff.login();
+                    return;
+                }
+
+                // URLから流入経路(?source=xxx)を取得
+                const urlParams = new URLSearchParams(window.location.search);
+                const source = urlParams.get('source') || 'default'; // パラメータがない場合は 'default' に
+
+                // ユーザーIDを取得
+                updateStatusMessage('ユーザー情報を取得しています...');
+                const profile = await liff.getProfile();
+                const userId = profile.userId;
+
+                // GASにデータを送信してメッセージ送信を依頼
+                updateStatusMessage('メッセージを送信しています...');
+                await sendDataToGas(userId, source);
+                
+                // 処理完了後、LIFFアプリを閉じる
+                liff.closeWindow();
+
+            } catch (error) {
+                console.error('LIFF Error:', error);
+                showError(error.message);
+            }
+        }
+
+        // GASにデータを送信する関数
+        async function sendDataToGas(userId, source) {
+            try {
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8', // GASの仕様に合わせる
+                    },
+                    body: JSON.stringify({ 
+                        userId: userId,
+                        source: source 
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`GAS request failed: ${errorData.message || response.statusText}`);
+                }
+                
+                console.log('GAS Success:', await response.json());
+
+            } catch (error) {
+                console.error('GAS Error:', error);
+                throw error; // エラーを呼び出し元に伝える
+            }
+        }
+
+        // ステータスメッセージを更新するヘルパー関数
+        function updateStatusMessage(message) {
+            const statusElement = document.getElementById('status-message');
+            if (statusElement) {
+                statusElement.innerHTML = message;
+            }
+        }
+
+        // エラー表示用のヘルパー関数
+        function showError(message) {
+            document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('error-state').classList.remove('hidden');
+            document.getElementById('error-message').textContent = `詳細: ${message}`;
+        }
+
+        // 処理を開始
+        main();
+    </script>
+</body>
+</html>
