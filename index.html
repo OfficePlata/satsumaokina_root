@@ -61,10 +61,11 @@
                 updateStatusMessage('ユーザー情報を取得しています...');
                 const profile = await liff.getProfile();
                 const userId = profile.userId;
+                const displayName = profile.displayName; // ★追加: 表示名を取得
 
                 // GASにデータを送信してメッセージ送信を依頼
                 updateStatusMessage('メッセージを送信しています...');
-                await sendDataToGas(userId, source);
+                await sendDataToGas(userId, source,displayName);
                 
                 // 処理完了後、LIFFアプリを閉じる
                 liff.closeWindow();
