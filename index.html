@@ -32,42 +32,34 @@
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
         // --- 設定項目 ---
-        // 1. LINE Developersで発行したLIFF IDに書き換えてください
-        const LIFF_ID = '2007426094-yjznQadE'; 
+        // 1. Messaging APIチャネルに作成したLIFFアプリのIDに書き換えてください
+        const LIFF_ID = '2007426094-yjznQadE'; // LINE Developersで取得したLIFF ID
         // 2. Google Apps Scriptをデプロイして取得したウェブアプリURLに書き換えてください
         const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxYWmCaV2fICPCJTcBRD8sacr3cW4ANjPzPkUCUozpuV-pm_f_h2nz8S7sMX5p91chIxA/exec';
 
         // メイン処理
         async function main() {
             try {
-                // ステータスメッセージを更新
                 updateStatusMessage('LIFFアプリを初期化しています...');
-                
-                // LIFFの初期化
                 await liff.init({ liffId: LIFF_ID });
 
                 if (!liff.isLoggedIn()) {
-                    // ログインしていない場合はログインを促す
                     updateStatusMessage('LINEにログインしてください...');
                     liff.login();
                     return;
                 }
 
-                // URLから流入経路(?source=xxx)を取得
                 const urlParams = new URLSearchParams(window.location.search);
-                const source = urlParams.get('source') || 'default'; // パラメータがない場合は 'default' に
+                const source = urlParams.get('source') || 'default';
 
-                // ユーザー情報を取得
                 updateStatusMessage('ユーザー情報を取得しています...');
                 const profile = await liff.getProfile();
                 const userId = profile.userId;
-                const displayName = profile.displayName; // ★追加: 表示名を取得
+                const displayName = profile.displayName;
 
-                // GASにデータを送信してメッセージ送信を依頼
                 updateStatusMessage('メッセージを送信しています...');
-                await sendDataToGas(userId, source, displayName); // ★変更: displayNameを渡す
+                await sendDataToGas(userId, source, displayName);
                 
-                // 処理完了後、LIFFアプリを閉じる
                 liff.closeWindow();
 
             } catch (error) {
@@ -77,18 +69,18 @@
         }
 
         // GASにデータを送信する関数
-        // ★修正点: 引数に displayName を追加し、bodyに含めるように修正
-        async function sendDataToGas(userId, source, displayName) { 
+        async function sendDataToGas(userId, source, displayName) {
             try {
                 const response = await fetch(GAS_WEB_APP_URL, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'text/plain;charset=utf-8', // GASの仕様に合わせる
+                        'Content-Type': 'text/plain;charset=utf-8', // GASの仕様
                     },
+                    // ★修正: displayNameも送信データに含める
                     body: JSON.stringify({ 
                         userId: userId,
                         source: source,
-                        displayName: displayName // ★追加: 表示名を送信データに含める
+                        displayName: displayName 
                     }),
                 });
 
@@ -101,7 +93,7 @@
 
             } catch (error) {
                 console.error('GAS Error:', error);
-                throw error; // エラーを呼び出し元に伝える
+                throw error;
             }
         }
 
